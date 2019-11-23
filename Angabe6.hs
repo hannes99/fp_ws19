@@ -1,8 +1,5 @@
 module Angabe6 where
 
--- halolololodfgdh
-import           Debug.Trace
-
 data Arith_Variable = A1 | A2 | A3 | A4 | A5 | A6 deriving (Eq,Show,Enum)
 data Log_Variable = L1 | L2 | L3 | L4 | L5 | L6 deriving (Eq,Show,Enum)
 data Arith_Ausdruck = AK Int -- Arithmetische Konstante
@@ -94,10 +91,7 @@ modifyEPS prog@(before, (x : after)) anw pos adr
     | otherwise                       = (before ++ (anw : after), adr)
     where oldProg = uncurry (++) prog
 
-
 exec_anw1 :: ([Anweisung], [Anweisung]) -> Int -> Zustand -> Endzustand
--- exec_anw1 prog@(before, ca : after) pos zst@(av, lv)
---     | trace (" " ++ show ca) False = undefined
 exec_anw1 prog@(_, ((AZ var val) : _)) pos zst@(av, lv) = inter_1
     (uncurry (++) prog)
     (pos + 1)
@@ -123,10 +117,8 @@ exec_anw1 prog@(_, ((MP adr anw) : _)) pos zst@(av, lv) = inter_1 newEPS
     (newEPS, nextAdr) = modifyEPS (splitAt adr (uncurry (++) prog)) anw pos adr
 
 inter_1 :: EPS -> Int -> Zustand -> Endzustand
-inter_1 prog pos z | -- | trace ("POS:" ++ show pos ++ " VB: "++ show (gib_aus_Zustand z)) False = undefined
-                     pos < 0 || pos >= length prog = z
+inter_1 prog pos z | pos < 0 || pos >= length prog = z
                    | otherwise = exec_anw1 (splitAt pos prog) pos z
-
 
 interpretiere_2 :: EPS -> Anfangszustand -> [Zwischenzustand]
 interpretiere_2 [] az = [az]
@@ -137,7 +129,6 @@ exec_anw2
     -> Int
     -> Zwischenzustand
     -> (EPS, Adresse, Zwischenzustand, Bool)
---exec_anw2 (b, ca : _) _ z | trace ("POS: "++ show (length b) ++ " " ++ show ca++ "\t" ++ show (gib_aus_Zustand z)) False = undefined
 exec_anw2 prog@(_, ((AZ var val) : _)) pos (av, lv) =
     (uncurry (++) prog, pos + 1, (neuAB, lv), True)
     where neuAB x = if x == var then links (evaluiere val (av, lv)) else av x
@@ -164,10 +155,9 @@ exec_anw2 prog@(_, ((MP adr anw) : _)) pos zst = (newEPS, nextAdr, zst, False)
 
 inter_2 :: EPS -> Int -> Zwischenzustand -> [Zwischenzustand]
 inter_2 prog pos z | nextPos < 0 || nextPos >= length prog = [z]
-                   | neuerZst = (z : inter_2 eps nextPos zst)
+                   | istNeuerZst = (z : inter_2 eps nextPos zst)
                    | otherwise = inter_2 eps nextPos zst
-    where (eps, nextPos, zst, neuerZst) = exec_anw2 (splitAt pos prog) pos z
-
+    where (eps, nextPos, zst, istNeuerZst) = exec_anw2 (splitAt pos prog) pos z
 
 -- A2
 gib_aus_arith_Varbel :: Arith_Variablenbelegung -> [(Arith_Variable, Int)]
