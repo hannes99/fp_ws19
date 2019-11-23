@@ -1,9 +1,10 @@
 module Angabe6 where
+
 -- halolololodfgdh
 import           Debug.Trace
 
-data Arith_Variable = A1 | A2 | A3 | A4 | A5 | A6 deriving (Eq,Show)
-data Log_Variable = L1 | L2 | L3 | L4 | L5 | L6 deriving (Eq,Show)
+data Arith_Variable = A1 | A2 | A3 | A4 | A5 | A6 deriving (Eq,Show,Enum)
+data Log_Variable = L1 | L2 | L3 | L4 | L5 | L6 deriving (Eq,Show,Enum)
 data Arith_Ausdruck = AK Int -- Arithmetische Konstante
     | AV Arith_Variable -- Arithmetische Variable
     | Plus Arith_Ausdruck Arith_Ausdruck -- Addition
@@ -77,6 +78,7 @@ instance Evaluierbar Log_Ausdruck where
     evaluiere (Kleiner a b) (av, lv) =
         Right (links (evaluiere a (av, lv)) < links (evaluiere b (av, lv)))
 
+-- A1
 interpretiere_1 :: EPS -> Anfangszustand -> Endzustand
 interpretiere_1 prog az = inter_1 prog 0 az
 
@@ -121,7 +123,7 @@ exec_anw1 prog@(_, ((MP adr anw) : _)) pos zst@(av, lv) = inter_1 newEPS
     (newEPS, nextAdr) = modifyEPS (splitAt adr (uncurry (++) prog)) anw pos adr
 
 inter_1 :: EPS -> Int -> Zustand -> Endzustand
-inter_1 prog pos z | trace ("POS:" ++ show pos) False = undefined
+inter_1 prog pos z | trace ("POS:" ++ show pos ++ " VB: "++ show (gib_aus_Zustand z)) False = undefined
                    | pos < 0 || pos >= length prog = z
                    | otherwise = exec_anw1 (splitAt pos prog) pos z
 
@@ -167,3 +169,70 @@ inter_2 :: EPS -> Int -> [Zwischenzustand] -> [Zwischenzustand]
 inter_2 prog pos z | trace ("POS:" ++ show pos) False = undefined
                    | pos < 0 || pos >= length prog = z
                    | otherwise = exec_anw2 (splitAt pos prog) pos z
+
+
+-- A2
+gib_aus_arith_Varbel :: Arith_Variablenbelegung -> [(Arith_Variable,Int)]
+gib_aus_arith_Varbel ab = map (\x -> (x, ab x)) [A1 .. A6]
+
+gib_aus_log_Varbel :: Log_Variablenbelegung -> [(Log_Variable,Bool)]
+gib_aus_log_Varbel lb = map (\x -> (x, lb x)) [L1 .. L6]
+
+gib_aus_Zustand :: Zustand -> ([(Arith_Variable,Int)],[(Log_Variable,Bool)])
+gib_aus_Zustand (ab, lb) = (gib_aus_arith_Varbel ab, gib_aus_log_Varbel lb)
+
+-- A3
+ggt :: EPS
+ggt = [
+       BS (Gleich (AV A1) (AK 0)) 7, -- 0
+       BS (Gleich (AV A1) (AV A2)) 5, -- 1
+       FU (Nicht (Kleiner (AV A1) (AV A2))) 3 5, -- 2
+       AZ A1 (Minus (AV A1) (AV A2)), -- 3
+       US 6, -- 4
+       AZ A2 (Minus (AV A2) (AV A1)), -- 5
+       BS (Nicht (Gleich (AV A2) (AK 0))) 1, -- 6
+       AZ A3 (AV A1) -- 7
+       ]
+
+fibo :: EPS
+fibo = [
+        LZ L1 (Nicht (Kleiner (AV A1) (AK 0))), -- 0
+        BS (LV L1) 3, -- 1
+        AZ A1 (Minus (AK 0) (AV A1)), -- 2
+        AZ A6 (AK 0), -- 3
+        BS (Gleich (AV A1) (AK 0)) 77, -- 4
+        AZ A6 (AK 1), -- 5
+        BS (Oder (Gleich (AV A1) (AK 1)) (Gleich (AV A1) (AK 2))) 77, -- 6
+        AZ A2 (AK 1), -- 7
+        AZ A3 (AK 1), -- 8
+        AZ A5 (AK 2), -- 9 (counter)
+        AZ A5 (Plus (AV A5) (AK 1)), -- 10
+        AZ A4 (Plus (AV A2) (AV A3)), -- 11
+        AZ A2 (AV A3), -- 12
+        AZ A3 (AV A4), -- 13
+        BS (Nicht (Gleich (AV A5) (AV A1))) 10, -- 14
+        AZ A6 (AV A4) -- 15
+       ]
+
+azst1 :: Anfangszustand
+azst1 = generiere [24,60] (replicate 6 True)
+
+azst2 :: Anfangszustand
+azst2 = generiere (18:45:[3..6]) (concat (replicate 3 [False,True]))
+
+generiere :: [Int] -> [Bool] -> Zustand
+generiere a l = (
+    \av -> case av of
+        A1 -> if length a > 0 then a !! 0 else 0
+        A2 -> if length a > 1 then a !! 1 else 0
+        A3 -> if length a > 2 then a !! 2 else 0
+        A4 -> if length a > 3 then a !! 3 else 0
+        A5 -> if length a > 4 then a !! 4 else 0
+        A6 -> if length a > 5 then a !! 5 else 0,
+    \lv -> case lv of
+        L1 -> if length l > 0 then l !! 0 else False
+        L2 -> if length l > 1 then l !! 1 else False
+        L3 -> if length l > 2 then l !! 2 else False
+        L4 -> if length l > 3 then l !! 3 else False
+        L5 -> if length l > 4 then l !! 4 else False
+        L6 -> if length l > 5 then l !! 5 else False)
