@@ -1,6 +1,6 @@
 module Angabe6 where
-
-import           Debug.Trace
+-- halolololodfgdh
+import Debug.Trace
 
 data Arith_Variable = A1 | A2 | A3 | A4 | A5 | A6 deriving (Eq,Show)
 data Log_Variable = L1 | L2 | L3 | L4 | L5 | L6 deriving (Eq,Show)
