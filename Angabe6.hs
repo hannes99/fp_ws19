@@ -1,6 +1,6 @@
 module Angabe6 where
 -- halolololodfgdh
-import Debug.Trace
+import           Debug.Trace
 
 data Arith_Variable = A1 | A2 | A3 | A4 | A5 | A6 deriving (Eq,Show)
 data Log_Variable = L1 | L2 | L3 | L4 | L5 | L6 deriving (Eq,Show)
@@ -80,39 +80,50 @@ instance Evaluierbar Log_Ausdruck where
 interpretiere_1 :: EPS -> Anfangszustand -> Endzustand
 interpretiere_1 prog az = inter_1 prog 0 az
 
-change_anw :: ([Anweisung], [Anweisung]) -> Anweisung -> EPS
-change_anw (before, (x : after)) anw = before ++ [anw] ++ after
+modifyEPS
+    :: ([Anweisung], [Anweisung])
+    -> Anweisung
+    -> Adresse
+    -> Adresse
+    -> (EPS, Adresse)
+modifyEPS prog@(before, (x : after)) anw pos adr
+    | adr < 0 || adr > length oldProg = (oldProg, pos + 1)
+    | adr == length oldProg             = (oldProg ++ [anw], adr)
+    | otherwise                         = (before ++ (anw : after), adr)
+    where oldProg = uncurry (++) prog
 
-exec_anw :: ([Anweisung], [Anweisung]) -> Int -> Zustand -> Endzustand
-exec_anw prog@(before, ca : after) pos zst@(av, lv)
+
+exec_anw1 :: ([Anweisung], [Anweisung]) -> Int -> Zustand -> Endzustand
+exec_anw1 prog@(before, ca : after) pos zst@(av, lv)
     | trace (" " ++ show ca) False = undefined
-exec_anw prog@(before, ((AZ var val) : after)) pos zst@(av, lv) = inter_1
+exec_anw1 prog@(_, ((AZ var val) : _)) pos zst@(av, lv) = inter_1
     (uncurry (++) prog)
     (pos + 1)
     (\x -> if x == var then links (evaluiere val zst) else av x, lv)
-exec_anw prog@(before, ((LZ var val) : after)) pos zst@(av, lv) = inter_1
+exec_anw1 prog@(_, ((LZ var val) : _)) pos zst@(av, lv) = inter_1
     (uncurry (++) prog)
     (pos + 1)
     (av, \x -> if x == var then rechts (evaluiere val zst) else lv x)
-exec_anw prog@(before, ((FU val adrOK adrNOK) : after)) _ zst@(av, lv) =
-    inter_1 (fst prog ++ snd prog)
-            (if (rechts (evaluiere val zst)) then adrOK else adrNOK)
-            (av, lv)
-exec_anw prog@(before, ((BS val adrOK) : after)) pos zst@(av, lv) = inter_1
-    (fst prog ++ snd prog)
-    (if (rechts (evaluiere val zst)) then adrOK else (pos + 1))
+exec_anw1 prog@(_, ((FU val adrOK adrNOK) : _)) _ zst@(av, lv) = inter_1
+    (uncurry (++) prog)
+    (if rechts (evaluiere val zst) then adrOK else adrNOK)
     (av, lv)
-exec_anw prog@(before, ((US adr) : after)) pos zst@(av, lv) =
-    inter_1 (fst prog ++ snd prog) adr (av, lv)
-exec_anw prog@(before, ((MP adr anw) : after)) pos zst@(av, lv) = inter_1
-    (change_anw (splitAt adr (fst prog ++ snd prog)) anw)
-    (pos + 1)
+exec_anw1 prog@(_, ((BS val adrOK) : _)) pos zst@(av, lv) = inter_1
+    (uncurry (++) prog)
+    (if rechts (evaluiere val zst) then adrOK else pos + 1)
     (av, lv)
+exec_anw1 prog@(_, ((US adr) : _)) pos zst@(av, lv) =
+    inter_1 (uncurry (++) prog) adr (av, lv)
+exec_anw1 prog@(_, ((MP adr anw) : _)) pos zst@(av, lv) = inter_1 newEPS
+                                                                  nextAdr
+                                                                  (av, lv)
+  where
+    (newEPS, nextAdr) = modifyEPS (splitAt adr (uncurry (++) prog)) anw pos adr
 
 inter_1 :: EPS -> Int -> Zustand -> Endzustand
 inter_1 prog pos z | trace ("POS:" ++ show pos) False = undefined
                    | pos < 0 || pos >= length prog = z
-                   | otherwise = exec_anw (splitAt pos prog) pos z
+                   | otherwise = exec_anw1 (splitAt pos prog) pos z
 
 
 interpretiere_2 :: EPS -> Anfangszustand -> [Zwischenzustand]
@@ -123,28 +134,36 @@ exec_anw2
     -> Int
     -> [Zwischenzustand]
     -> [Zwischenzustand]
-exec_anw2 prog@(before, ((AZ var val) : after)) pos zst@((av, lv) : zs) =
-    inter_2 (uncurry (++) prog) (pos + 1) ((neuAB, lv) : zst)
+exec_anw2 prog@(before, ca : after) pos zst@((av, lv) : zs)
+    | trace (" " ++ show ca ++ " " ++ show (length zst)) False = undefined
+exec_anw2 prog@(_, ((AZ var val) : _)) pos zst@((av, lv) : zs) = inter_2
+    (uncurry (++) prog)
+    (pos + 1)
+    ((neuAB, lv) : zst)
     where neuAB x = if x == var then links (evaluiere val (av, lv)) else av x
-exec_anw2 prog@(before, ((LZ var val) : after)) pos zst@((av, lv) : zs) =
-    inter_2 (uncurry (++) prog) (pos + 1) ((av, neuLB) : zst)
+exec_anw2 prog@(_, ((LZ var val) : _)) pos zst@((av, lv) : zs) = inter_2
+    (uncurry (++) prog)
+    (pos + 1)
+    ((av, neuLB) : zst)
     where neuLB x = if x == var then rechts (evaluiere val (av, lv)) else lv x
-exec_anw2 prog@(before, ((FU val adrOK adrNOK) : after)) _ zst@((av, lv) : zs)
-    = inter_2 (uncurry (++) prog)
-              (if rechts (evaluiere val (av, lv)) then adrOK else adrNOK)
-              zst
-exec_anw2 prog@(before, ((BS val adrOK) : after)) pos zst@((av, lv) : zs) =
-    inter_2 (uncurry (++) prog)
-            (if rechts (evaluiere val (av, lv)) then adrOK else pos + 1)
-            zst
-exec_anw2 prog@(before, ((US adr) : after)) pos zst@((av, lv) : zs) =
+exec_anw2 prog@(_, ((FU val adrOK adrNOK) : _)) _ zst@((av, lv) : zs) = inter_2
+    (uncurry (++) prog)
+    (if rechts (evaluiere val (av, lv)) then adrOK else adrNOK)
+    zst
+exec_anw2 prog@(_, ((BS val adrOK) : _)) pos zst@((av, lv) : zs) = inter_2
+    (uncurry (++) prog)
+    (if rechts (evaluiere val (av, lv)) then adrOK else pos + 1)
+    zst
+exec_anw2 prog@(_, ((US adr) : _)) pos zst@((av, lv) : zs) =
     inter_2 (uncurry (++) prog) adr zst
-exec_anw2 prog@(before, ((MP adr anw) : after)) pos zst@((av, lv) : zs) =
-    inter_2 (change_anw (splitAt (adr - 1) (uncurry (++) prog)) anw)
-            (pos + 1)
-            zst
-
+exec_anw2 prog@(_, ((MP adr anw) : _)) pos zst@((av, lv) : zs) = inter_2
+    newEPS
+    nextAdr
+    zst
+  where
+    (newEPS, nextAdr) = modifyEPS (splitAt adr (uncurry (++) prog)) anw pos adr
 
 inter_2 :: EPS -> Int -> [Zwischenzustand] -> [Zwischenzustand]
-inter_2 prog pos z | pos < 0 || pos >= length prog = z
+inter_2 prog pos z | trace ("POS:" ++ show pos) False = undefined
+                   | pos < 0 || pos >= length prog = z
                    | otherwise = exec_anw2 (splitAt pos prog) pos z
