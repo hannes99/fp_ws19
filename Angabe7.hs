@@ -26,4 +26,9 @@ selektiere g s = (snd . head) (filter ((>=) g . fst) (zip (zipWith (-) s (0:s)) 
 type Woerterstrom = [String]
 
 generiere_woerter :: Woerterstrom
-generiere_woerter = []
+generiere_woerter = go [""]
+    where
+        go :: [String] -> [String]
+        go woerter =
+            let neue = concatMap (\w -> [w++"a", w++"b", w++"c"]) woerter
+            in neue ++ go neue
