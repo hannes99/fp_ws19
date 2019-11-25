@@ -18,5 +18,10 @@ approximiere_exp x epsilon = selektiere epsilon (generiere_exp_strom x)
 generiere_exp_strom :: Stelle -> Strom
 generiere_exp_strom x = [sum (take z (zipWith (/) [x**n | n <- [0..]] (1:1:[product [1..n] | n <- [2..]]))) | z <- [1..]]
 
+--
 selektiere :: Genauigkeit -> Strom -> Approx_Wert
-selektiere g s = snd $ head (dropWhile ((<=) g . fst) (zip (zipWith (-) (tail s) s) s))
+selektiere g s = (snd . head) (filter ((>=) g . fst) (zip (zipWith (-) s (0:s)) s))
+
+-- A3
+generiere_woerter :: Woerterstrom
+generiere_woerter = []
