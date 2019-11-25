@@ -23,5 +23,7 @@ selektiere :: Genauigkeit -> Strom -> Approx_Wert
 selektiere g s = (snd . head) (filter ((>=) g . fst) (zip (zipWith (-) s (0:s)) s))
 
 -- A3
+type Woerterstrom = [String]
+
 generiere_woerter :: Woerterstrom
 generiere_woerter = []
